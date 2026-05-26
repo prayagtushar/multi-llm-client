@@ -1,0 +1,41 @@
+[project]
+name = "llm-client"
+version = "0.1.0"
+description = "Unified async Python client for OpenAI, Anthropic, and Gemini"
+requires-python = ">=3.11"
+dependencies = [
+    "openai>=1.60.0",
+    "anthropic>=0.44.0",
+    "google-genai>=1.0.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "tenacity>=9.0",
+    "click>=8.0",
+    "python-dotenv>=1.0",
+]
+
+[project.scripts]
+llm = "llm_client.cli:cli" 
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "pytest-mock>=3.0",
+    "httpx>=0.27.0",
+    "mypy>=1.10",
+    "ruff>=0.6.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.mypy]
+strict = true
+ignore_missing_imports = true
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
