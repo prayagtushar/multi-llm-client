@@ -1,3 +1,7 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
 [project]
 name = "llm-client"
 version = "0.1.0"
@@ -17,7 +21,10 @@ dependencies = [
 ]
 
 [project.scripts]
-llm = "llm_client.cli:cli" 
+llm = "llm_client.cli:cli"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/llm_client"]
 
 [tool.uv]
 dev-dependencies = [
