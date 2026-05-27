@@ -30,8 +30,8 @@ class OpenAIProvider(LLMProvider):
         self,
         messages: list[Message],
         system: str | None = None,
-        max_tokens: int = 1024,
-        temperature: float = 0.7,
+        max_tokens: int = LLMConfig.default_max_tokens,
+        temperature: float = LLMConfig.default_temperature,
     ) -> LLMResponse:
         oai_messages = []
         if system:
