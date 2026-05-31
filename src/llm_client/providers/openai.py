@@ -1,5 +1,6 @@
 import time
 from collections.abc import AsyncIterator
+from typing import Any, cast
 
 from openai import APIConnectionError, APITimeoutError, AsyncOpenAI, RateLimitError
 from tenacity import (
@@ -9,15 +10,31 @@ from tenacity import (
     wait_random_exponential,
 )
 
-from ..config import LLMConfig
 from ..schema import FinishReason, LLMResponse, Message, Provider, Usage
 from .base import LLMProvider
 
+_FINISH_MAP = {
+    "stop": FinishReason.STOP,
+    "length": FinishReason.LENGTH,
+    "tool_calls": FinishReason.TOOL_CALL,
+    "function_call": FinishReason.TOOL_CALL,
+    "content_filter": FinishReason.SAFETY,
+}
+
 
 class OpenAIProvider(LLMProvider):
-    def __init__(self, config: LLMConfig):
-        self._client = AsyncOpenAI(api_key=config.openai_api_key)
-        self._model = config.openai_model
+    def __init__(self, api_key: str, model: str):
+        self._client = AsyncOpenAI(api_key=api_key)
+        self._model = model
+
+    def _build_messages(
+        self, messages: list[Message], system: str | None
+    ) -> list[dict[str, str]]:
+        oai_messages: list[dict[str, str]] = []
+        if system:
+            oai_messages.append({"role": "system", "content": system})
+        oai_messages.extend({"role": m.role, "content": m.content} for m in messages)
+        return oai_messages
 
     @retry(
         retry=retry_if_exception_type(
@@ -25,48 +42,41 @@ class OpenAIProvider(LLMProvider):
         ),
         wait=wait_random_exponential(min=1, max=60),
         stop=stop_after_attempt(5),
+        reraise=True,
     )
     async def complete(
         self,
         messages: list[Message],
         system: str | None = None,
-        max_tokens: int = LLMConfig.default_max_tokens,
-        temperature: float = LLMConfig.default_temperature,
+        max_tokens: int = 1024,
+        temperature: float = 0.7,
     ) -> LLMResponse:
-        oai_messages = []
-        if system:
-            oai_messages.append({"role": "systen", "content": system})
-            oai_messages.extend(
-                [{"role": m.role, "content": m.content} for m in messages]
-            )
+        oai_messages = self._build_messages(messages, system)
 
         start = time.perf_counter()
         response = await self._client.chat.completions.create(
             model=self._model,
-            messages=oai_messages,
+            messages=cast(Any, oai_messages),
             max_tokens=max_tokens,
             temperature=temperature,
         )
-        latency = (time.perf_counter() - start) * 1000
+        latency_ms = (time.perf_counter() - start) * 1000
 
         raw_finish = response.choices[0].finish_reason
-        finish_map = {
-            "stop": FinishReason.TOOL_CALL,
-            "content_filter": FinishReason.SAFETY,
-        }
-        finish = finish_map.get(raw_finish, FinishReason.UNKNOWN)
+        finish = _FINISH_MAP.get(raw_finish or "", FinishReason.UNKNOWN)
 
+        usage = response.usage
         return LLMResponse(
             content=response.choices[0].message.content or "",
             provider=Provider.OPEN_AI,
             model=response.model,
             finish_reason=finish,
             usage=Usage(
-                input_tokens=response.usage.prompt_tokens,
-                output_tokens=response.usage.completion_tokens,
-                total_tokens=response.usage.total_tokens,
+                input_tokens=usage.prompt_tokens if usage else 0,
+                output_tokens=usage.completion_tokens if usage else 0,
+                total_tokens=usage.total_tokens if usage else 0,
             ),
-            latency=latency,
+            latency_ms=latency_ms,
             request_id=response.id,
         )
 
@@ -77,18 +87,21 @@ class OpenAIProvider(LLMProvider):
         max_tokens: int = 1024,
         temperature: float = 0.7,
     ) -> AsyncIterator[str]:
+        oai_messages = self._build_messages(messages, system)
 
-        oai_messages = []
-        if system:
-            oai_messages.append({"role": "system", "content": system})
-        oai_messages.extend({"role": m.role, "content": m.content} for m in messages)
-
-        async with self._client.chat.completions.create(
-            model=self._model,
-            messages=oai_messages,
-            max_tokens=max_tokens,
-            temperature=temperature,
-        ) as stream:
-            async for event in stream:
-                if event.type == "content.delta" and event.delta:
-                    yield event.delta
+        stream = cast(
+            Any,
+            await self._client.chat.completions.create(
+                model=self._model,
+                messages=cast(Any, oai_messages),
+                max_tokens=max_tokens,
+                temperature=temperature,
+                stream=True,
+            ),
+        )
+        async for chunk in stream:
+            if not chunk.choices:
+                continue
+            delta = chunk.choices[0].delta.content
+            if delta:
+                yield delta
