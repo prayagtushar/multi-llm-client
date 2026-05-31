@@ -18,21 +18,21 @@ class FinishReason(StrEnum):
 
 
 class Usage(BaseModel):
-    input_token: int
-    output_token: int
-    total_token: int
-
-
-class Response(BaseModel):
-    content: str
-    provider: Provider
-    model: str
-    finish_reason = FinishReason
-    usage: Usage
-    latency: float
-    request_id: str | None | None = None
+    input_tokens: int
+    output_tokens: int
+    total_tokens: int
 
 
 class Message(BaseModel):
     role: str
     content: str
+
+
+class LLMResponse(BaseModel):
+    content: str
+    provider: Provider
+    model: str
+    finish_reason: FinishReason
+    usage: Usage
+    latency_ms: float
+    request_id: str | None = None
