@@ -90,3 +90,5 @@ pnpm-lock.yaml
 
 # --- Python version (keep if you track it) ---
 .python-version
+
+docs/
