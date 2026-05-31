@@ -1,5 +1,6 @@
-from pydantic_settings import BaseSettings
-from schema import Provider
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from .schema import Provider
 
 
 class LLMConfig(BaseSettings):
@@ -7,7 +8,7 @@ class LLMConfig(BaseSettings):
 
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None
-    gemini_api_key: str = None
+    gemini_api_key: str | None = None
 
     openai_model: str = "gpt-4o-mini"
     anthropic_model: str = "claude-haiku-4-5-20251001"
@@ -17,4 +18,4 @@ class LLMConfig(BaseSettings):
     default_temperature: float = 0.7
     max_retries: int = 5
 
-    model_config = {"env_prefix": "", "env_file": ".env"}
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
