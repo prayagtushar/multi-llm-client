@@ -6,6 +6,7 @@ build-backend = "hatchling.build"
 name = "llm-client"
 version = "0.1.0"
 description = "Unified async Python client for OpenAI, Anthropic, and Gemini"
+license = {text = "MIT"}
 requires-python = ">=3.11"
 dependencies = [
     "openai>=1.60.0",
@@ -18,10 +19,13 @@ dependencies = [
     "tenacity>=9.0",
     "click>=8.0",
     "python-dotenv>=1.0",
+    "prompt_toolkit>=3.0",
+    "rich>=13.0",
 ]
 
 [project.scripts]
 llm = "llm_client.cli:cli"
+multi-llm = "llm_client.repl:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/llm_client"]

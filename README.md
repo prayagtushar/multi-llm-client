@@ -24,6 +24,21 @@ src/llm_client/
     └── registry.py     # Provider lookup factory
 ```
 
+## Highlights
+
+- One async interface over **OpenAI, Anthropic, and Gemini** — normalizes messages, streaming, token usage, and errors across all three.
+- Four surfaces from one core: Python **library**, **CLI** (`llm`), interactive **REPL** (`multi-llm`), and a **FastAPI** service.
+- **Tenacity** exponential-backoff retries (5 attempts) with provider-specific error mapping and a custom exception hierarchy.
+- Type-safe throughout: **Pydantic v2** models + `pydantic-settings` config + **mypy-strict**.
+- `compare()` races a prompt across all configured providers **concurrently** (asyncio.gather) with per-call latency + request IDs.
+- **40 tests** across client / provider adapters / API / REPL; Python 3.11+.
+
+## Demo
+
+> _Demo GIF/asciinema coming soon._
+
+<!-- TODO: add a CLI/REPL asciinema or GIF at docs/demo.gif and embed here -->
+
 ## Setup
 
 ```bash
@@ -56,13 +71,41 @@ async def main():
 asyncio.run(main())
 ```
 
-## CLI
+## CLI (one-shot)
 
 ```bash
 llm ask "What is the capital of France?" --provider openai
 llm ask "Tell me a story" --stream
 llm compare "Explain recursion in one sentence"
 ```
+
+## Interactive shell
+
+A persistent REPL with multi-turn conversation memory:
+
+```bash
+multi-llm
+```
+
+Type a prompt to chat; the conversation is remembered across turns. Manage the
+session with slash commands:
+
+```
+/help                 show all commands
+/provider openai      switch the active provider
+/system <text>        set a system prompt   (/system clear to remove)
+/temp 0.2  /max 256   set sampling params
+/stream on|off        toggle streaming
+/markdown on|off      toggle markdown rendering (on by default)
+/compare <prompt>     ask every configured provider at once
+/history  /clear      view or reset the conversation
+/exit                 leave (also Ctrl-D / Ctrl-C)
+```
+
+Answers are rendered as formatted markdown (bold, headings, lists, syntax-
+highlighted code) via [rich](https://github.com/Textualize/rich) — including
+live-rendered while streaming. It also has arrow-key history (saved to
+`~/.multi_llm_history`) and Tab-completion for commands and provider names.
 
 ## REST API
 
